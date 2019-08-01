@@ -80,6 +80,6 @@ model = build_model(model_input)
 model.summary()
 adam_optimmizer = keras.optimizers.Adam(lr=3e-4)
 model.compile(loss='mean_squared_error', optimizer=adam_optimmizer, metrics=['accuracy'])
-model.fit(np.expand_dims(train_encoder_inputs, axis=1), np.expand_dims(train_decoder_outputs, axis=1), epochs=10, batch_size=128, validation_data=(np.expand_dims(test_encoder_inputs, axis=1), np.expand_dims(test_decoder_outputs, axis=1)))
+model.fit(np.expand_dims(train_encoder_inputs, axis=1), np.expand_dims(train_decoder_outputs, axis=1), epochs=100, batch_size=128, validation_data=(np.expand_dims(test_encoder_inputs, axis=1), np.expand_dims(test_decoder_outputs, axis=1)))
 model.save(SAVE_PATH)
 
