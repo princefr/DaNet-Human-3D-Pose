@@ -11,25 +11,32 @@ import copy
 TRAIN_SUBJECTS = [1,5,6,7,8]
 TEST_SUBJECTS  = [9,11]
 
+
 # Joints in H3.6M -- data has 32 joints, but only 17 that move; these are the indices.
 H36M_NAMES = ['']*32
-H36M_NAMES[0]  = 'Hip'
-H36M_NAMES[1]  = 'RHip'
-H36M_NAMES[2]  = 'RKnee'
-H36M_NAMES[3]  = 'RFoot'
-H36M_NAMES[6]  = 'LHip'
-H36M_NAMES[7]  = 'LKnee'
-H36M_NAMES[8]  = 'LFoot'
-H36M_NAMES[12] = 'Spine'
-H36M_NAMES[13] = 'Thorax'
-H36M_NAMES[14] = 'Neck/Nose'
-H36M_NAMES[15] = 'Head'
-H36M_NAMES[17] = 'LShoulder'
-H36M_NAMES[18] = 'LElbow'
-H36M_NAMES[19] = 'LWrist'
-H36M_NAMES[25] = 'RShoulder'
-H36M_NAMES[26] = 'RElbow'
-H36M_NAMES[27] = 'RWrist'
+H36M_NAMES[0]  = 'Hip' # represente 18  # 0
+H36M_NAMES[1]  = 'RHip' # represente 8 # 1
+H36M_NAMES[2]  = 'RKnee' # represente 9 # 2
+H36M_NAMES[3]  = 'RFoot' # represente 10 # 3
+H36M_NAMES[6]  = 'LHip' # represente 11 # 4
+H36M_NAMES[7]  = 'LKnee' # represente 12 # 5
+H36M_NAMES[8]  = 'LFoot' # represente 13 # 6
+H36M_NAMES[12] = 'Spine' # represente 19 in inference # 7 after all
+H36M_NAMES[13] = 'Thorax' # represente 1 # 8
+H36M_NAMES[14] = 'Neck/Nose' #represente 0 # 9
+H36M_NAMES[15] = 'Head' # # represente 20 # 10
+H36M_NAMES[17] = 'LShoulder' # represente 5 # 11
+H36M_NAMES[18] = 'LElbow' # represente 6 # 12
+H36M_NAMES[19] = 'LWrist' # represente 7 # 13
+H36M_NAMES[25] = 'RShoulder' #represente 2 # 14
+H36M_NAMES[26] = 'RElbow' # represente 3 # 15
+H36M_NAMES[27] = 'RWrist' # represente 4 # 16
+
+
+
+
+
+#[18, 8, 9, 10, 11, 12, 13, 19, 1, 0, 5, 6, 7, 2, 3, 4]
 
 ##
 #[6,2,1,0,3,4,5,7,8,9,13,14,15,12,11,10]
@@ -52,6 +59,16 @@ SH_NAMES[12] = 'RShoulder'
 SH_NAMES[13] = 'LShoulder'
 SH_NAMES[14] = 'LElbow'
 SH_NAMES[15] = 'LWrist'
+
+Left_keypoints = [6, 7, 8, 9, 10, 16, 17, 18, 19, 20, 21, 22, 23]
+Right_keypoints = [1, 2, 3, 4, 5, 24, 25, 26, 27, 28, 29, 30, 31]
+
+
+def augmentation(data):
+  for value in data:
+    for (index, replacement) in zip(Right_keypoints, Left_keypoints):
+      value[index] = value[replacement]
+  return data
 
 def load_data( bpath, subjects, actions, dim=3 ):
   """
@@ -138,7 +155,7 @@ def load_stacked_hourglass(data_dir, subjects, actions):
       print('Reading subject {0}, action {1}'.format(subj, action))
 
       dpath = os.path.join( data_dir, 'S{0}'.format(subj), 'StackedHourglass/{0}*.h5'.format(action) )
-      print( dpath )
+
 
       fnames = glob.glob( dpath )
 
@@ -176,7 +193,7 @@ def load_stacked_hourglass(data_dir, subjects, actions):
             dim_to_use[1::2] = dim_to_use_y
             poses_final[:, dim_to_use] = poses
 
-            print(poses_final.shape, "poses final shape")
+
             seqname = seqname+'-sh'
             data[ (subj, action, seqname) ] = poses_final
 
@@ -350,6 +367,8 @@ def project_to_cameras( poses_set, cams, ncams=4 ):
     subj, a, seqname = t3dk
     t3d = poses_set[ t3dk ]
 
+    #(2357, 96) this is the shape
+
     for cam in range( ncams ):
       R, T, f, c, k, p, name = cams[ (subj, cam+1) ]
       pts2d, _, _, _, _ = cameras.project_point_radial( np.reshape(t3d, [-1, 3]), R, T, f, c, k, p )
@@ -410,19 +429,23 @@ def create_2d_data( actions, data_dir, rcams ):
   """
 
   # Load 3d data
-  train_set = load_data( data_dir, TRAIN_SUBJECTS, actions, dim=3 )
-  test_set  = load_data( data_dir, TEST_SUBJECTS,  actions, dim=3 )
+  train_set = load_data( data_dir, TRAIN_SUBJECTS, actions, dim=3)
+  test_set  = load_data( data_dir, TEST_SUBJECTS,  actions, dim=3)
 
-  train_set = project_to_cameras( train_set, rcams )
-  test_set  = project_to_cameras( test_set, rcams )
+  train_set = project_to_cameras( train_set, rcams)
+  test_set  = project_to_cameras( test_set, rcams)
+
+
 
   # Compute normalization statistics.
   complete_train = copy.deepcopy( np.vstack( train_set.values() ))
   data_mean, data_std, dim_to_ignore, dim_to_use = normalization_stats( complete_train, dim=2 )
 
   # Divide every dimension independently
-  train_set = normalize_data( train_set, data_mean, data_std, dim_to_use )
-  test_set  = normalize_data( test_set,  data_mean, data_std, dim_to_use )
+  train_set = normalize_data( train_set, data_mean, data_std, dim_to_use)
+  test_set  = normalize_data( test_set,  data_mean, data_std, dim_to_use)
+
+  print(list(train_set), "main issue")
 
   return train_set, test_set, data_mean, data_std, dim_to_ignore, dim_to_use
 
@@ -494,7 +517,7 @@ def postprocess_3d( poses_set ):
 
 
 
-def get_all_batches(data_x, data_y, camera_frame, training=True ):
+def get_all_batches(data_x, data_y, camera_frame, training=True):
     """
     Obtain a list of all the batches, randomly permutted
     Args
@@ -532,10 +555,11 @@ def get_all_batches(data_x, data_y, camera_frame, training=True ):
       key3d = key2d if (camera_frame) else (subj, b, '{0}.h5'.format(fname.split('.')[0]))
       key3d = (subj, b, fname[:-3]) if fname.endswith('-sh') and camera_frame else key3d
 
-      n2d, _ = data_x[ key2d ].shape
+      n2d, _ = data_x[ key2d].shape
       encoder_inputs[idx:idx+n2d, :]  = data_x[ key2d ]
       decoder_outputs[idx:idx+n2d, :] = data_y[ key3d ]
       idx = idx + n2d
+
 
 
     if training:
@@ -547,3 +571,20 @@ def get_all_batches(data_x, data_y, camera_frame, training=True ):
 
 
     return encoder_inputs, decoder_outputs
+
+
+def build_encoder(data_x, data_y):
+  n = 0
+  for i in data_x:
+    n = i.shape[0] + n
+  idx = np.random.permutation(n)
+  concat_x = np.concatenate(data_x, axis=0)
+  concat_y = np.concatenate(data_y, axis=0)
+
+  encoder_input = concat_x[idx, :]
+  decoder_output = concat_y[idx, :]
+  decoder_output = np.array([np.reshape(i, (i.shape[0] * i.shape[1]))for i in decoder_output])
+  decoder_output = np.expand_dims(decoder_output, axis=1)
+
+  return encoder_input, decoder_output
+

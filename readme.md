@@ -1,12 +1,13 @@
 ## DaNet 3D Human Pose (the repo is still in progress)
 
 This repository serve as a baseline (for me) code for making 3D human pose model using CNN.
-I'm still looking the right model
+I'm still looking the right model.
+The camera orientation doesnt work as expected
+Warning: this repo is heavily inspired by the Facebook Video3D repo.
 
 ### Dataset
 
-This repository provide the [Human3.6M](http://vision.imar.ro/human3.6m/description.php) dataset  in 3d points, camera parameters to produce ground truth 2d detections
-Unfortunatly we dont provide the stacked hourglass dataset, you will need to download it by your own.
+This repository provide the [Human3.6M](http://vision.imar.ro/human3.6m/description.php) dataset  in 3d points, camera parameters to produce ground truth 2d detections.
 
 How to download the dataset:
 
@@ -20,18 +21,20 @@ How to download the dataset:
 * [numpy]
 
 
+### Generate the data
+`python3 Utils/PrepareDataset.py` 
+after the dataset prepation has done , please place the files `data_2d_h36m_gt.npz` and `data_3d_h36m.npz` in the data directory
 
 ### Training the model
-
-`python Training.py`
+`python3 Training.py`
 
 ### Testing the model
-`python Testing.py`
+`python3 Testing.py`
 
 ### Example
 
 ![Alt text](Examples/test_image.jpeg?raw=true "2D POSE")
-![Alt text](Examples/3d_pose.jpeg?raw=true "3D POSE")
+![Alt text](Examples/figure_3d.png?raw=true "3D POSE")
 
 ### Citing
 

@@ -8,6 +8,32 @@ import h5py
 import os
 from mpl_toolkits.mplot3d import Axes3D
 
+
+
+def show3dpose_new(channels, ax, lcolor="#3498db", rcolor="#e74c3c", add_labels=True):
+  I = np.array([-1, 0, 1, 2, 0, 4, 5, 0, 7, 8, 9, 8, 11, 12, 8, 14, 15]) # start points
+  # 3D
+  radius = 1.7 # space around the subject
+
+  print(channels, "this is the pose")
+
+  ax.view_init(elev=15., azim=70.)
+  ax.set_xlim3d([-radius / 2, radius / 2])
+  ax.set_zlim3d([0, radius])
+  ax.set_ylim3d([-radius / 2, radius / 2])
+
+  #ax.set_aspect('equal')
+  ax.set_xticklabels([])
+  ax.set_yticklabels([])
+  ax.set_zticklabels([])
+  ax.dist = 7.5
+
+  for j, j_parent in enumerate(I):
+    if j_parent == -1:
+      continue
+    ax.plot([channels[j, 0], channels[j_parent, 0]], [channels[j, 1], channels[j_parent, 1]], [channels[j, 2], channels[j_parent, 2]], zdir='z', c="red")
+
+
 def show3Dpose(channels, ax, lcolor="#3498db", rcolor="#e74c3c", add_labels=True): # blue, orange
   """
   Visualize a 3d skeleton
@@ -23,14 +49,14 @@ def show3Dpose(channels, ax, lcolor="#3498db", rcolor="#e74c3c", add_labels=True
   """
 
   assert channels.size == len(data_utils.H36M_NAMES)*3, "channels should have 96 entries, it has %d instead" % channels.size
-  vals = np.reshape( channels, (len(data_utils.H36M_NAMES), -1) )
+  vals = np.reshape(channels, (len(data_utils.H36M_NAMES), -1))
 
-  I = np.array([1,2,3,1,7,8,1, 13,14,15,14,18,19,14,26,27])-1 # start points
+  I = np.array([1,2,3,1,7,8,1,13,14,15,14,18,19,14,26,27])-1 # start points
   J = np.array([2,3,4,7,8,9,13,14,15,16,18,19,20,26,27,28])-1 # end points
   LR  = np.array([1,1,1,0,0,0,0, 0, 0, 0, 0, 0, 0, 1, 1, 1], dtype=bool)
 
   # 3D
-  RADIUS = 750 # space around the subject
+  RADIUS = 1.7 # space around the subject
   xroot, yroot, zroot = vals[0,0], vals[0,1], vals[0,2]
   ax.set_xlim3d([-RADIUS+xroot, RADIUS+xroot])
   ax.set_zlim3d([-RADIUS+zroot, RADIUS+zroot])

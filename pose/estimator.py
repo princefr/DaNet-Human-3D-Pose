@@ -321,12 +321,12 @@ class TfPoseEstimator:
         joints = []
         bboxes = []
         xcenter = []
-        # 取出每个人的关节点
+
         for human in humans:
             xs = []
             ys = []
             centers = {}
-            # 将所有关节点绘制到图像上
+
             for i in range(common.CocoPart.Background.value):
                 if i not in human.body_parts.keys():
                     continue
@@ -337,16 +337,16 @@ class TfPoseEstimator:
                 centers[i] = center
                 xs.append(center[0])
                 ys.append(center[1])
-                # 绘制关节点
+
                 cv2.circle(npimg, center, 3, common.CocoColors[i], thickness=3, lineType=8, shift=0)
 
-            # 将属于同一人的关节点按照各个部位相连
+
             for pair_order, pair in enumerate(common.CocoPairsRender):
                 if pair[0] not in human.body_parts.keys() or pair[1] not in human.body_parts.keys():
                     continue
                 cv2.line(npimg, centers[pair[0]], centers[pair[1]], common.CocoColors[pair_order], 3)
 
-            # 根据每个人的关节点信息生成ROI区域
+
             xmin = float(min(xs) / image_w)
             ymin = float(min(ys) / image_h)
             xmax = float(max(xs) / image_w)
@@ -384,7 +384,7 @@ class TfPoseEstimator:
                 ys.append(center[1])
                 cv2.circle(sk, center, 3, (0, 0, 255), thickness=3, lineType=8, shift=0)
 
-            # 将属于同一人的关节点按照各个部位相连
+
             for pair_order, pair in enumerate(common.CocoPairsRender):
                 if pair[0] not in human.body_parts.keys() or pair[1] not in human.body_parts.keys():
                     continue

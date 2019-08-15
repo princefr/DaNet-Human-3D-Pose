@@ -5,10 +5,6 @@ import cv2
 
 
 
-
-
-
-
 class Danet():
     def __init__(self):
         self.two_d_model = self.load_model()

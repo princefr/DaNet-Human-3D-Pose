@@ -9,13 +9,73 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from . import  data_utils
 from . import viz
+import tensorflow as tf
+import hashlib
+import operator
+import torch
 
+
+
+
+def deterministic_random(min_value, max_value, data):
+  digest = hashlib.sha256(data.encode()).digest()
+  raw_value = int.from_bytes(digest[:4], byteorder='little', signed=False)
+  return int(raw_value / (2 ** 32 - 1) * (max_value - min_value)) + min_value
 
 def normalize_screen_coordinates(X, w, h):
   assert X.shape[-1] == 2
 
   # Normalize so that [0, w] is mapped to [-1, 1], while preserving the aspect ratio
   return X / w * 2 - [1, h / w]
+
+
+def image_coordinates(X, w, h):
+  assert X.shape[-1] == 2
+  # Reverse camera frame normalization
+  return (X + [1, h / w]) * w / 2
+
+def project_to_2d(X, camera_params):
+  """
+
+  :param X: 3D points in *camera space* to transform (N, *, 3)
+  :param camera_params:
+  :return:
+  """
+
+
+  assert X.shape[-1] == 3
+  assert len(camera_params.shape) == 2
+  assert camera_params.shape[-1] == 9
+  assert X.shape[0] == camera_params.shape[0]
+
+  while len(camera_params.shape) < len(X.shape):
+    camera_params = np.expand_dims(camera_params, axis=1)
+
+  f = camera_params[..., :2]
+  c = camera_params[..., 2:4]
+  k = camera_params[..., 4:7]
+  p = camera_params[..., 7:]
+
+
+
+  XX = X[..., :2] / X[..., 2:]
+  r2 = np.sum(X[..., :2] * 2, axis=len(XX.shape)-1, keepdims=True)
+
+
+
+  r_final = np.array([r2, r2**2, r2**3])
+  r_final = r_final.reshape(r_final.shape[1], r_final.shape[2], r_final.shape[3], r_final.shape[0])
+
+  radial = 1 + np.sum(k * r_final, axis=len(r2.shape)-1, keepdims=True)
+  tan = np.sum(p*XX, axis=len(XX.shape)-1, keepdims=True)
+
+
+
+  XXX = XX * (radial + tan) + p * r2
+  value_to_return = f * XXX + c
+  return np.squeeze(value_to_return, axis=0)
+
+
 
 def project_point_radial( P, R, T, f, c, k, p ):
   """
@@ -42,10 +102,14 @@ def project_point_radial( P, R, T, f, c, k, p ):
   assert len(P.shape) == 2
   assert P.shape[1] == 3
 
+
+
   N = P.shape[0]
   X = R.dot( P.T - T ) # rotate and translate
   XX = X[:2,:] / X[2,:]
   r2 = XX[0,:]**2 + XX[1,:]**2
+
+
 
   radial = 1 + np.einsum( 'ij,ij->j', np.tile(k,(1, N)), np.array([r2, r2**2, r2**3]) );
   tan = p[0]*XX[1,:] + p[1]*XX[0,:]
@@ -59,6 +123,59 @@ def project_point_radial( P, R, T, f, c, k, p ):
 
   return Proj, D, radial, tan, r2
 
+
+def qrot(q, v):
+  """
+  :param q:
+  :param v:
+  :return:
+  """
+  assert q.shape[-1] == 4
+  assert v.shape[-1] == 3
+  assert q.shape[:-1] == v.shape[:-1]
+
+  qvec = q[..., 1:]
+
+  uv = np.cross(qvec, v, axis=len(q.shape) -1)
+  uuv = np.cross(qvec, uv, axis=len(q.shape) -1)
+  data = (v + 2 * (q[..., :1] * uv + uuv))
+
+
+  return data
+
+def q_inverse(q, inplace=False):
+  if inplace:
+    q[..., 1:] *= -1
+    return q
+  else:
+    w = q[..., :1]
+    xyz = q[..., 1:]
+    return np.concatenate((w, -xyz), axis=len(q.shape)-1)
+
+def world_to_camera(P, R, T):
+  """
+  Convert points from world to camera coordinates
+
+  Args
+    P: Nx3 3d points in world coordinates
+    R: 3x3 Camera rotation matrix
+    T: 3x1 Camera translation parameters
+  Returns
+    X_cam:
+  """
+  R = q_inverse(R)
+  R = np.tile(R, (*P.shape[:-1], 1))
+
+  q = qrot(R, P - T)  # rotate and translate
+  return  q
+
+def camera_to_world(P, R, T):
+  # need to invert this one.
+  brah = np.tile(R, (*P.shape[:-1], 1))
+
+  x = qrot(brah, P) + T
+  return  x
+
 def world_to_camera_frame(P, R, T):
   """
   Convert points from world to camera coordinates
@@ -71,10 +188,13 @@ def world_to_camera_frame(P, R, T):
     X_cam: Nx3 3d points in camera coordinates
   """
 
-  assert len(P.shape) == 2
-  assert P.shape[1] == 3
+  print(P.shape, "this is the p sh")
 
-  X_cam = R.dot( P.T - T ) # rotate and translate
+  assert len(P.shape) == 3
+  assert P.shape[2] == 3
+
+
+  X_cam = R.dot(P.T - T ) # rotate and translate
 
   return X_cam.T
 
